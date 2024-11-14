@@ -2,7 +2,7 @@
 
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04 as base
 
-LABEL MAINTAINER="yueyang.zhang@tum.de"
+LABEL MAINTAINER="runcong.wang@tum.de"
 
 SHELL [ "/bin/bash", "-c" ]
 
@@ -39,7 +39,6 @@ RUN apt-get update && apt-get install -q -y --no-install-recommends \
   dirmngr \
   gnupg2 \
   lsb-release \
-  python3.7\
   python3-pip \
   && rm -rf /var/lib/apt/lists/*
 
@@ -124,57 +123,57 @@ RUN sudo mkdir -p /home/$USERNAME/Downloads/openssl/ssl \
 
 ##### Dependencies Stage #####
 
+# FROM runtime as dev_containers_target_stage
 FROM runtime as dep
+RUN sudo apt update
+# WORKDIR /workspaces/tiago_ws/
 
-# Install Tiago packages
-RUN mkdir -p /tiago_ws/src
-RUN cd /tiago_ws/
-RUN curl https://raw.githubusercontent.com/pal-robotics/tiago_tutorials/noetic-devel/tiago_public-noetic.rosinstall
-RUN rosinstall src /opt/ros/noetic tiago_public−noetic.rosinstall
-RUN sudo apt-get update
+# # Install Tiago packages
+# RUN sudo wget https://raw.githubusercontent.com/pal-robotics/tiago_tutorials/noetic-devel/tiago_public-noetic.rosinstall
+# RUN rosinstall /workspaces/tiago_ws/src /opt/ros/noetic /workspaces/tiago_ws/tiago_public-noetic.rosinstall
+# RUN echo 'source /workspaces/tiago/tiago_ws/devel/setup.bash' >> ~/.bashrc
+
 
 
 RUN echo 'export ROS_HOME=~/.ros' >> ~/.bashrc
-
-RUN source home/$USERNAME/.bashrc
-
-RUN echo 'source /tiago_ws/devel/setup.bash' >> ~/.bashrc
+RUN source /home/$USERNAME/.bashrc
 RUN echo "alias sss='source devel/setup.bash'" >> ~/.bashrc
+
 RUN sudo apt install -qqy lsof \
   net-tools\
   lshw\
   iputils-ping\
   python-is-python3
 
-# TODO: pytorch, segment_anything, etc.
 
 RUN sudo apt install -qqy ros-noetic-moveit
 RUN pip install --upgrade pip numpy protobuf
 RUN pip install networkx==3.1
 RUN pip install torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu118
-RUN pip install git+https://github.com/facebookresearch/segment-anything.git
 RUN pip install opencv-python pycocotools matplotlib onnxruntime onnx
-RUN pip install ftfy regex tqdm
-RUN pip install git+https://github.com/openai/CLIP.git
+RUN pip install ftfy regex tqdm tensorflow tensorboard
 
-# RUN pip install -r /workspaces/adv_robocup/hsrb_ws/src/ultralytics_ros/requirements.txt
 RUN pip install opencv-python smash
 
-WORKDIR /workspaces/adv_robocup/hsrb_ws/src
-RUN rosdep install --from-paths . --ignore-src --rosdistro noetic -y
+# jax jaxlib NOTE: YOU HAVE TO INSTALL MANUALLY AFTER THE CONTAINER IS BUILT
+RUN pip install --upgrade "jax[cuda11_cudnn86]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
-# For speech to text and text to speech and task_planner
-RUN sudo apt install -qqy sox\
-    ros-noetic-tmc-msgs
+# WORKDIR /workspaces/LSHM
 
-RUN pip install gtts spacy ultralytics rosnumpy
-RUN python3 -m spacy download en_core_web_sm
-RUN sudo apt-get install -qqy \
-    ros-noetic-dwa-local-planner \
-    ros-noetic-slam-gmapping \
-    ros-noetic-slam-karto\
-    ros-noetic-vision-msgs\
-    ros-noetic-gmapping\
-    ros-noetic-graph-msgs\
-    ros-noetic-rosparam-shortcuts\
-    mpg321
+RUN pip install numpy \
+                scipy\
+                matplotlib\
+                scikit-image\
+                scikit-learn\
+                ipython\
+                pandas\
+                h5py\
+                seaborn\
+                tensorflow-datasets\
+                ipywidgets
+
+RUN sudo apt install -y ros-noetic-base-local-planner
+# RUN rosdep update
+## RUN rosdep install --from-paths /workspaces/tiago_ws/src --ignore-src --rosdistro noetic -y
+# RUN rosdep install --from-paths /workspaces/tiago_ws/src --ignore-src -r -y
+
